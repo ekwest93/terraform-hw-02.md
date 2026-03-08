@@ -51,7 +51,126 @@
 
 1. Замените все хардкод-**значения** для ресурсов **yandex_compute_image** и **yandex_compute_instance** на **отдельные** переменные. К названиям переменных ВМ добавьте в начало префикс **vm_web_** .  Пример: **vm_web_name**.
 2. Объявите нужные переменные в файле variables.tf, обязательно указывайте тип переменной. Заполните их **default** прежними значениями из main.tf. 
-3. Проверьте terraform plan. Изменений быть не должно. 
+3. Проверьте terraform plan. Изменений быть не должно.
+
+### variables.tf
+```
+cloud vars
+
+variable "yc_token" {
+  type        = string
+}
+
+variable "yc_cloud_id" {
+  type        = string
+  description = "https://cloud.yandex.ru/docs/resource-manager/operations/cloud/get-id"
+}
+
+variable "yc_folder_id" {
+  type        = string
+  description = "https://cloud.yandex.ru/docs/resource-manager/operations/folder/get-id"
+}
+
+variable "yc_region" {
+  type        = string
+  description = "https://cloud.yandex.ru/docs/overview/concepts/geo-scope"
+}
+variable "default_cidr" {
+  type        = list(string)
+  default     = ["10.0.1.0/24"]
+  description = "https://cloud.yandex.ru/docs/vpc/operations/subnet-create"
+}
+
+variable "vpc_name" {
+  type        = string
+  default     = "develop"
+  description = "VPC network & subnet name"
+}
+
+
+###ssh vars
+
+variable "vms_ssh_public_root_key" {
+  type        = string
+  description = "ssh-keygen -t ed25519"
+}
+
+variable "vm_web_family" {
+  type = string
+  default = "ubuntu-2004-lts"
+}
+
+variable "vm_web_name" {
+  type = string
+  default = "netology-develop-platform-web"
+}
+
+variable "vm_web_platform_id" {
+  type = string
+  default = "standard-v1"
+}
+
+variable "vm_web_cores" {
+  type = number
+  default = 2
+}
+
+variable "vm_web_memory" {
+  type = number
+  default = 1
+}
+
+variable "vm_web_core_fraction" {
+  type = number
+  default = 5
+}
+```
+### main.tf
+
+```
+resource "yandex_vpc_network" "develop" {
+  name = var.vpc_name
+}
+resource "yandex_vpc_subnet" "develop" {
+  name           = var.vpc_name
+  zone           = var.yc_region
+  network_id     = yandex_vpc_network.develop.id
+  v4_cidr_blocks = var.default_cidr
+}
+
+
+data "yandex_compute_image" "ubuntu" {
+  family = var.vm_web_family
+}
+resource "yandex_compute_instance" "platform" {
+  name        = var.vm_web_name
+  platform_id = var.vm_web_platform_id
+  resources {
+    cores         = var.vm_web_cores
+    memory        = var.vm_web_memory
+    core_fraction = var.vm_web_core_fraction
+  }
+  boot_disk {
+    initialize_params {
+      image_id = data.yandex_compute_image.ubuntu.image_id
+    }
+  }
+  scheduling_policy {
+    preemptible = true
+  }
+  network_interface {
+    subnet_id = yandex_vpc_subnet.develop.id
+    nat       = true
+  }
+
+  metadata = {
+    serial-port-enable = 1
+    ssh-keys           = "ubuntu:${var.vms_ssh_public_root_key}"
+  }
+
+}
+```
+<img width="1664" height="286" alt="image" src="https://github.com/user-attachments/assets/1f6b6a8a-5bca-4a28-97b4-8bea75d849f8" />
 
 
 ### Задание 3
@@ -60,13 +179,181 @@
 2. Скопируйте блок ресурса и создайте с его помощью вторую ВМ в файле main.tf: **"netology-develop-platform-db"** ,  ```cores  = 2, memory = 2, core_fraction = 20```. Объявите её переменные с префиксом **vm_db_** в том же файле ('vms_platform.tf').  ВМ должна работать в зоне "ru-central1-b"
 3. Примените изменения.
 
+### variables.tf
+
+```
+###cloud vars
+
+variable "yc_token" {
+  type	      = string
+}
+
+variable "yc_cloud_id" {
+  type        = string
+  description = "https://cloud.yandex.ru/docs/resource-manager/operations/cloud/get-id"
+}
+
+variable "yc_folder_id" {
+  type        = string
+  description = "https://cloud.yandex.ru/docs/resource-manager/operations/folder/get-id"
+}
+
+variable "yc_region" {
+  type        = string
+  description = "https://cloud.yandex.ru/docs/overview/concepts/geo-scope"
+}
+
+variable "yc_region_vm2" {
+  type        = string
+  description = "https://cloud.yandex.ru/docs/overview/concepts/geo-scope"
+}
+
+variable "default_cidr" {
+  type        = list(string)
+  default     = ["10.0.1.0/24"]
+  description = "https://cloud.yandex.ru/docs/vpc/operations/subnet-create"
+}
+
+variable "vpc_name" {
+  type        = string
+  default     = "develop"
+  description = "VPC network & subnet name"
+}
+
+
+###ssh vars
+
+variable "vms_ssh_public_root_key" {
+  type        = string
+  description = "ssh-keygen -t ed25519"
+}
+
+### var for VM1
+variable "vm_web_family" {
+  type = string
+  default = "ubuntu-2004-lts"
+}
+
+variable "vm_web_name" {
+  type = string
+  default = "netology-develop-platform-web"
+}
+
+variable "vm_web_platform_id" {
+  type = string
+  default = "standard-v1"
+}
+
+variable "vm_web_cores" {
+  type = number
+  default = 2
+}
+
+variable "vm_web_memory" {
+  type = number
+  default = 1
+}
+
+variable "vm_web_core_fraction" {
+  type = number
+  default = 5
+}
+
+### var for VM2
+
+variable "vm_db_family" {
+  type = string
+  default = "ubuntu-2004-lts"
+}
+
+variable "vm_db_name" {
+  type = string
+  default = "netology-develop-platform-db"
+}
+
+variable "vm_db_platform_id" {
+  type = string
+  default = "standard-v1"
+}
+
+variable "vm_db_cores" {
+  type = number
+  default = 2
+}
+
+variable "vm_db_memory" {
+  type = number
+  default = 2
+}
+
+variable "vm_db_core_fraction" {
+  type = number
+  default = 20
+}
+```
+
+### vms_platform.tf
+
+```*.tf
+
+data "yandex_compute_image" "vm2" {
+  family = var.vm_db_family
+}
+resource "yandex_compute_instance" "vm2" {
+  name        = var.vm_db_name
+  platform_id = var.vm_db_platform_id
+  resources {
+    cores         = var.vm_db_cores
+    memory        = var.vm_db_memory
+    core_fraction = var.vm_db_core_fraction
+  }
+  boot_disk {
+    initialize_params {
+      image_id = data.yandex_compute_image.ubuntu.image_id
+    }
+  }
+  scheduling_policy {
+    preemptible = true
+  }
+  network_interface {
+    subnet_id = yandex_vpc_subnet.develop.id
+    nat       = true
+  }
+
+  metadata = {
+    serial-port-enable = 1
+    ssh-keys           = "ubuntu:${var.vms_ssh_public_root_key}"
+  }
+
+}
+
+```
+
+<img width="1620" height="242" alt="image" src="https://github.com/user-attachments/assets/716272e3-5e40-4588-8af6-ac50113b960e" />
 
 ### Задание 4
 
 1. Объявите в файле outputs.tf **один** output , содержащий: instance_name, external_ip, fqdn для каждой из ВМ в удобном лично для вас формате.(без хардкода!!!)
-2. Примените изменения.
+
+```output.tf
+
+output "vm_platform_ip_address" {
+  value = yandex_compute_instance.platform.*.network_interface.0.nat_ip_address
+  description = "vm_platform external ip"
+}
+
+
+output "vm_db_ip_address" {
+  value = yandex_compute_instance.vm2.*.network_interface.0.nat_ip_address
+  description = "vm_db external ip"
+}
+
+```
+
+3. Примените изменения.
 
 В качестве решения приложите вывод значений ip-адресов команды ```terraform output```.
+<img width="864" height="393" alt="image" src="https://github.com/user-attachments/assets/ef59fdf2-6934-4808-919a-441c613b21f0" />
 
 
 ### Задание 5
@@ -74,6 +361,29 @@
 1. В файле locals.tf опишите в **одном** local-блоке имя каждой ВМ, используйте интерполяцию ${..} с НЕСКОЛЬКИМИ переменными по примеру из лекции.
 2. Замените переменные внутри ресурса ВМ на созданные вами local-переменные.
 3. Примените изменения.
+locals.tf
+```
+locals {
+ name_platform = "${var.vm_web_name}"
+ name_db = "${var.vm_db_name}"
+}
+
+```
+main.tf
+```
+
+resource "yandex_compute_instance" "platform" {
+  name        = local.name_platform
+  ....
+}
+
+vms_platform.tf
+
+resource "yandex_compute_instance" "vm2" {
+  name        = local.name_db
+  ...
+}
+```
 
 
 ### Задание 6
@@ -111,6 +421,7 @@
   
 5. Найдите и закоментируйте все, более не используемые переменные проекта.
 6. Проверьте terraform plan. Изменений быть не должно.
+<img width="1672" height="455" alt="image" src="https://github.com/user-attachments/assets/03cd37c3-39d5-4cac-bf85-38c681056dd9" />
 
 ------
 

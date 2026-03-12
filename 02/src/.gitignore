@@ -1,0 +1,21 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+*.terraform.lock.hcl
+crash.log
+crash.*.log
+
+# Secrets
+*.auto.tfvars
+*.auto.tfvars.json
+personal.auto.tfvars
+key.json
+*.pem
+*.priv
+*.bak
+
+# Local files
+.terraformrc
+terraform.rc
+.DS_Store
